@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickMed Pharmacy | Prescription Health</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="logo-icon"><i class="fa-solid fa-prescription"></i></div>
+      <div>
+        <h1>QuickMed<span>Rx</span></h1>
+        <p>Prescription-Only Digital Pharmacy</p>
+      </div>
+    </div>
+
+    <div class="search-bar">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="searchInput" placeholder="Search 30 prescription medicines..." onkeyup="filterProducts()" />
+    </div>
+
+    <div class="nav-actions">
+      <button class="cart-trigger" onclick="toggleCart()">
+        <i class="fa-solid fa-basket-shopping"></i>
+        <span class="cart-count" id="cartCount">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Rx Warning Banner -->
+  <section class="hero-banner">
+    <div class="rx-alert-strip">
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <span><strong>Mandatory Prescription Policy:</strong> All 30 medications listed below require a valid physician's prescription slip upon checkout.</span>
+    </div>
+  </section>
+
+  <!-- Category Filter Pills -->
+  <div class="category-tabs" id="categoryContainer">
+    <button class="cat-pill active" onclick="filterCategory('all', this)">All (30 Items)</button>
+    <button class="cat-pill" onclick="filterCategory('Antibiotics', this)">Antibiotics</button>
+    <button class="cat-pill" onclick="filterCategory('Cardiovascular / BP', this)">Cardiovascular & BP</button>
+    <button class="cat-pill" onclick="filterCategory('Diabetes', this)">Diabetes Care</button>
+    <button class="cat-pill" onclick="filterCategory('Respiratory', this)">Respiratory</button>
+    <button class="cat-pill" onclick="filterCategory('Pain & Anti-inflammatory', this)">Pain & Anti-inflammatory</button>
+    <button class="cat-pill" onclick="filterCategory('Mental Health & Neuro', this)">Mental Health & Neuro</button>
+    <button class="cat-pill" onclick="filterCategory('Gastrointestinal', this)">Gastrointestinal</button>
+  </div>
+
+  <!-- Shopee-Style 30 Medicines Grid -->
+  <main class="products-grid" id="productsGrid"></main>
+
+  <!-- Cart Drawer -->
+  <div class="cart-drawer-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+  <aside class="cart-drawer" id="cartDrawer">
+    <div class="cart-header">
+      <h3>Prescription Bag (<span id="cartTotalItems">0</span>)</h3>
+      <button class="close-btn" onclick="toggleCart()">&times;</button>
+    </div>
+    <div class="cart-items" id="cartItemsList">
+      <p class="empty-msg">No medicines selected yet.</p>
+    </div>
+    <div class="cart-footer">
+      <div class="subtotal">
+        <span>Estimated Total:</span>
+        <strong id="cartTotalPrice">₱0.00</strong>
+      </div>
+      <button class="checkout-btn" onclick="openCheckout()">Proceed to Prescription Upload</button>
+    </div>
+  </aside>
+
+  <!-- Checkout & Rx Upload Modal -->
+  <div class="modal-overlay" id="checkoutModal">
+    <div class="checkout-card">
+      <button class="close-modal" onclick="closeCheckout()">&times;</button>
+      <h2>Prescription Verification</h2>
+      <p class="modal-sub">Submit patient details and doctor prescription</p>
+
+      <form id="orderForm" onsubmit="submitOrder(event)">
+        <div class="rx-notice">
+          <i class="fa-solid fa-file-prescription"></i>
+          <div>
+            <strong>Rx Verification Step</strong>
+            <p>Our licensed pharmacist reviews all uploaded Rx slips before fulfilling orders.</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Patient Full Name</label>
+          <input type="text" id="custName" placeholder="Juan Dela Cruz" required />
+        </div>
+
+        <div class="form-group">
+          <label>Delivery Address</label>
+          <input type="text" id="custAddress" placeholder="House #, Street, Barangay, City" required />
+        </div>
+
+        <div class="form-group">
+          <label>Cellphone Number (CP)</label>
+          <input type="tel" id="custPhone" placeholder="09123456789" pattern="[0-9]{11}" required />
+        </div>
+
+        <div class="rx-group-box">
+          <div class="form-group">
+            <label>Attending Doctor's Name</label>
+            <input type="text" id="doctorName" placeholder="Dr. Maria Santos, MD" required />
+          </div>
+
+          <div class="form-group">
+            <label>Doctor's PRC / License Number</label>
+            <input type="text" id="doctorLicense" placeholder="PRC Lic. No. 0123456" required />
+          </div>
+
+          <div class="form-group">
+            <label>Upload Prescription Photo (Rx Slip)</label>
+            <input type="file" id="rxFile" accept="image/*" required />
+            <small class="hint-text">Supported: JPG, PNG clear photo or scan</small>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Payment Method</label>
+          <div class="payment-options">
+            <label class="payment-card">
+              <input type="radio" name="paymentMethod" value="COD" checked />
+              <div class="pay-info">
+                <i class="fa-solid fa-hand-holding-dollar"></i>
+                <div>
+                  <strong>Cash on Delivery (COD)</strong>
+                  <p>Pay upon delivery approval</p>
+                </div>
+              </div>
+            </label>
+
+            <label class="payment-card">
+              <input type="radio" name="paymentMethod" value="Online Payment" />
+              <div class="pay-info">
+                <i class="fa-solid fa-qrcode"></i>
+                <div>
+                  <strong>Online Payment</strong>
+                  <p>GCash / Maya / Card</p>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="order-summary-box">
+          <div><span>Total Rx Payable:</span> <strong id="modalTotalAmount">₱0.00</strong></div>
+        </div>
+
+        <button type="submit" class="place-order-btn">
+          <i class="fa-solid fa-shield-check"></i> Submit Order for Dispensing
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- CS Live Chat Widget -->
+  <div class="chat-widget">
+    <button class="chat-fab" onclick="toggleChat()">
+      <i class="fa-solid fa-comment-dots"></i>
+    </button>
+    
+    <div class="chat-window" id="chatWindow">
+      <div class="chat-header">
+        <div>
+          <h4 id="chatTitleID"><i class="fa-solid fa-headset"></i> Live Support</h4>
+          <small id="chatQueueStatus">Connecting to live queue...</small>
+        </div>
+        <button class="close-chat" onclick="toggleChat()">&times;</button>
+      </div>
+      
+      <div class="chat-messages" id="chatMessages">
+        <!-- Messages injected via JS -->
+      </div>
+      
+      <form class="chat-input" onsubmit="sendChatMessage(event)">
+        <input type="text" id="chatInputText" placeholder="Having a problem? Type here..." required autocomplete="off" />
+        <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
+      </form>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
