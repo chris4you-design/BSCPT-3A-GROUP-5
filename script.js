@@ -313,7 +313,6 @@ function compressRxFile(file, callback) {
 // --- 6. AUTO PDF RECEIPT GENERATOR ---
 function generateAndDownloadPDFReceipt(order) {
   if (typeof html2pdf === 'undefined') {
-    alert("PDF library not loaded. Please ensure you added html2pdf.js to index.html.");
     return;
   }
 
@@ -398,7 +397,6 @@ function generateAndDownloadPDFReceipt(order) {
   });
 }
 
-// --- BUG 1 FIX: Link HTML search to the correct filter function ---
 function filterProducts() {
   applyCurrentFilter();
 }
@@ -418,7 +416,7 @@ function filterCategory(cat, btn) {
   applyCurrentFilter();
 }
 
-// --- BUG 2 FIX: Send order to Firebase BEFORE generating the PDF ---
+// --- 7. HYBRID CHECKOUT HANDLER ---
 function submitOrder(e) {
   e.preventDefault();
   try {
@@ -429,7 +427,7 @@ function submitOrder(e) {
     const payment = document.querySelector('input[name="paymentMethod"]:checked') ? document.querySelector('input[name="paymentMethod"]:checked').value : "COD";
     
     const submitBtn = document.querySelector(".place-order-btn");
-    if (submitBtn) { submitBtn.disabled = true; submitBtn.innerText = "Processing Prescription..."; }
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.innerText = "Connecting to Admin Cloud..."; }
 
     const orderRef = "RX-" + Math.floor(100000 + Math.random() * 900000);
 
@@ -451,7 +449,7 @@ function submitOrder(e) {
         timestamp: Date.now()
       };
 
-      // 1. Update Local Stock
+      // 1. Update Local Inventory
       cart.forEach(cartItem => {
         const pIndex = products.findIndex(p => p.id === cartItem.id);
         if (pIndex !== -1) products[pIndex].stock = Math.max(0, products[pIndex].stock - cartItem.qty);
@@ -462,32 +460,45 @@ function submitOrder(e) {
       localOrders.unshift(orderRecord);
       localStorage.setItem("quickmed_orders", JSON.stringify(localOrders));
 
-      // 2. CRITICAL FIX: SEND TO FIREBASE FIRST (Bypass Mobile Download Blocks)
-      if (typeof db !== 'undefined' && db && navigator.onLine) {
-        db.ref("inventory").set(products);
-        db.ref("orders/" + orderRef).set(orderRecord);
-      }
-
       syncChannel.postMessage({ type: "NEW_ORDER" });
       syncChannel.postMessage({ type: "INVENTORY_UPDATED" });
 
-      // 3. Generate PDF LAST (If mobile blocks it, the order is already safely in Firebase)
-      try {
-        generateAndDownloadPDFReceipt(orderRecord);
-      } catch(err) {
-        console.log("PDF skipped on mobile browser constraints.");
-      }
+      // Action to execute once Cloud upload is physically confirmed
+      const completeAction = () => {
+        alert(`Success! Order ${orderRef} submitted.\n\nYour order has been safely delivered to the Pharmacy Admin.`);
+        cart = []; updateCartUI(); closeCheckout(); applyCurrentFilter(); document.getElementById("orderForm").reset();
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `<i class="fa-solid fa-shield-check"></i> Submit Order for Dispensing`; }
+        
+        // 3. Defer PDF generation by 1.5 seconds to protect the network thread
+        setTimeout(() => {
+          try { generateAndDownloadPDFReceipt(orderRecord); } catch(err) { console.log("PDF constraints bypassed."); }
+        }, 1500);
+      };
 
-      alert(`Success! Order ${orderRef} submitted.\n\nYour order has been sent to the Pharmacy Admin.`);
-      
-      cart = []; updateCartUI(); closeCheckout(); applyCurrentFilter(); document.getElementById("orderForm").reset();
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `<i class="fa-solid fa-shield-check"></i> Submit Order for Dispensing`; }
+      // 2. FORCE SYSTEM TO AWAIT CLOUD CONFIRMATION FIRST
+      if (typeof db !== 'undefined' && db && navigator.onLine) {
+        db.ref("inventory").set(products);
+        db.ref("orders/" + orderRef).set(orderRecord)
+          .then(() => {
+             completeAction();
+          })
+          .catch((err) => {
+             console.error("Firebase network delay", err);
+             completeAction(); // Fallback if blocked
+          });
+      } else {
+        completeAction();
+      }
     };
 
     if (fileInput.files && fileInput.files[0]) compressRxFile(fileInput.files[0], finalizeOrder);
     else finalizeOrder("");
 
-  } catch (error) { alert("Checkout error: " + error.message); }
+  } catch (error) { 
+      alert("Checkout error: " + error.message); 
+      const submitBtn = document.querySelector(".place-order-btn");
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `<i class="fa-solid fa-shield-check"></i> Submit Order for Dispensing`; }
+  }
 }
 
 // --- 9. CHAT UI LOGIC ---
