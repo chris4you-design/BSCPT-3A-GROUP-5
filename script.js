@@ -115,9 +115,17 @@ try {
     db.ref(`chats/${custId}/messages`).on("value", (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        chatLog = Object.values(data);
+        let incoming = Object.values(data);
+        let lastMsg = incoming[incoming.length - 1];
+        
+        // BUG FIX: Intercept Admin's End Chat Signal and force wipe history locally
+        if (lastMsg && lastMsg.isEndChat) {
+          chatLog = [lastMsg];
+        } else {
+          chatLog = incoming;
+        }
       } else {
-        // BUG FIX: Instantly clear history if Admin deletes the chat
+        // Fallback if node is fully deleted
         chatLog = [
           { 
             sender: "CS", 
@@ -127,6 +135,7 @@ try {
           }
         ];
       }
+      
       localStorage.setItem(`quickmed_chat_${custId}`, JSON.stringify(chatLog));
       if (document.getElementById("chatWindow") && document.getElementById("chatWindow").classList.contains("open")) {
         renderChatUI();
