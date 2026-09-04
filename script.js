@@ -398,7 +398,27 @@ function generateAndDownloadPDFReceipt(order) {
   });
 }
 
-// --- 7. HYBRID CHECKOUT HANDLER ---
+// --- BUG 1 FIX: Link HTML search to the correct filter function ---
+function filterProducts() {
+  applyCurrentFilter();
+}
+
+function applyCurrentFilter() {
+  const query = document.getElementById("searchInput") ? document.getElementById("searchInput").value.toLowerCase() : "";
+  let filtered = products;
+  if (currentCategory !== "all") filtered = filtered.filter(p => p.category === currentCategory);
+  if (query) filtered = filtered.filter(p => p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query) || p.dosage.toLowerCase().includes(query));
+  renderProducts(filtered);
+}
+
+function filterCategory(cat, btn) {
+  currentCategory = cat;
+  document.querySelectorAll(".cat-pill").forEach(p => p.classList.remove("active"));
+  btn.classList.add("active");
+  applyCurrentFilter();
+}
+
+// --- BUG 2 FIX: Send order to Firebase BEFORE generating the PDF ---
 function submitOrder(e) {
   e.preventDefault();
   try {
@@ -431,6 +451,7 @@ function submitOrder(e) {
         timestamp: Date.now()
       };
 
+      // 1. Update Local Stock
       cart.forEach(cartItem => {
         const pIndex = products.findIndex(p => p.id === cartItem.id);
         if (pIndex !== -1) products[pIndex].stock = Math.max(0, products[pIndex].stock - cartItem.qty);
@@ -441,17 +462,23 @@ function submitOrder(e) {
       localOrders.unshift(orderRecord);
       localStorage.setItem("quickmed_orders", JSON.stringify(localOrders));
 
-      generateAndDownloadPDFReceipt(orderRecord);
-
-      syncChannel.postMessage({ type: "NEW_ORDER" });
-      syncChannel.postMessage({ type: "INVENTORY_UPDATED" });
-
+      // 2. CRITICAL FIX: SEND TO FIREBASE FIRST (Bypass Mobile Download Blocks)
       if (typeof db !== 'undefined' && db && navigator.onLine) {
         db.ref("inventory").set(products);
         db.ref("orders/" + orderRef).set(orderRecord);
       }
 
-      alert(`Success! Order ${orderRef} submitted.\n\nYour Official PDF Order Receipt has automatically downloaded to your computer as proof of transaction!`);
+      syncChannel.postMessage({ type: "NEW_ORDER" });
+      syncChannel.postMessage({ type: "INVENTORY_UPDATED" });
+
+      // 3. Generate PDF LAST (If mobile blocks it, the order is already safely in Firebase)
+      try {
+        generateAndDownloadPDFReceipt(orderRecord);
+      } catch(err) {
+        console.log("PDF skipped on mobile browser constraints.");
+      }
+
+      alert(`Success! Order ${orderRef} submitted.\n\nYour order has been sent to the Pharmacy Admin.`);
       
       cart = []; updateCartUI(); closeCheckout(); applyCurrentFilter(); document.getElementById("orderForm").reset();
       if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `<i class="fa-solid fa-shield-check"></i> Submit Order for Dispensing`; }
@@ -461,21 +488,6 @@ function submitOrder(e) {
     else finalizeOrder("");
 
   } catch (error) { alert("Checkout error: " + error.message); }
-}
-
-function applyCurrentFilter() {
-  const query = document.getElementById("searchInput") ? document.getElementById("searchInput").value.toLowerCase() : "";
-  let filtered = products;
-  if (currentCategory !== "all") filtered = filtered.filter(p => p.category === currentCategory);
-  if (query) filtered = filtered.filter(p => p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query) || p.dosage.toLowerCase().includes(query));
-  renderProducts(filtered);
-}
-
-function filterCategory(cat, btn) {
-  currentCategory = cat;
-  document.querySelectorAll(".cat-pill").forEach(p => p.classList.remove("active"));
-  btn.classList.add("active");
-  applyCurrentFilter();
 }
 
 // --- 9. CHAT UI LOGIC ---
