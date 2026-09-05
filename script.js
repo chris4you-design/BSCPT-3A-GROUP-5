@@ -115,23 +115,15 @@ try {
     db.ref(`chats/${custId}/messages`).on("value", (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        let incoming = Object.values(data);
-        let lastMsg = incoming[incoming.length - 1];
-        
-        // BUG FIX: Intercept Admin's End Chat Signal and force wipe history locally
-        if (lastMsg && lastMsg.isEndChat) {
-          chatLog = [lastMsg];
-        } else {
-          chatLog = incoming;
-        }
+        // If chat exists in cloud, show it
+        chatLog = Object.values(data);
       } else {
-        // Fallback if node is fully deleted
+        // BUG FIX: If cloud is empty (New User OR Admin wiped chat), reset to default welcome message
         chatLog = [
           { 
             sender: "CS", 
-            text: "Your problem has been solved. If you still need help, feel free to chat again!", 
-            time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-            isEndChat: true
+            text: "Hello! Welcome to QuickMed. Having a problem? Let us know!", 
+            time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) 
           }
         ];
       }
@@ -553,12 +545,6 @@ function sendChatMessage(e) {
   const input = document.getElementById("chatInputText");
   const text = input.value.trim();
   if(!text) return;
-
-  if (chatLog.length > 0 && chatLog[chatLog.length - 1].isEndChat) {
-    chatLog = [
-      { sender: "CS", text: "Welcome back! How can we help you today?", time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) }
-    ];
-  }
 
   const msgObj = {
     sender: "Customer",
