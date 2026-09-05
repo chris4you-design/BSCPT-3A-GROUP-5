@@ -394,11 +394,68 @@ function filterProducts() {
 }
 
 function applyCurrentFilter() {
+  const grid = document.getElementById("productsGrid");
   const query = document.getElementById("searchInput") ? document.getElementById("searchInput").value.toLowerCase() : "";
+  
+  if (currentCategory === "About Us") {
+    renderAboutUs();
+    return;
+  }
+
   let filtered = products;
   if (currentCategory !== "all") filtered = filtered.filter(p => p.category === currentCategory);
   if (query) filtered = filtered.filter(p => p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query) || p.dosage.toLowerCase().includes(query));
+  
+  if (grid) grid.style.display = "grid"; 
   renderProducts(filtered);
+}
+
+function renderAboutUs() {
+  const grid = document.getElementById("productsGrid");
+  if (!grid) return;
+  
+  grid.style.display = "block"; // Overrides the main store grid
+  
+  grid.innerHTML = `
+    <!-- MAIN FOUNDER CARD -->
+    <div class="founder-profile">
+      <img src="picsmed/40.png" alt="Marlou Aurea Dia" onerror="this.onerror=null;this.src='https://placehold.co/400x400?text=Founder+Photo';" class="founder-img" />
+      <div class="founder-info">
+        <h2>Meet the Founder</h2>
+        <h3>Marlou Aurea Dia</h3>
+        <p>Welcome to QuickMed Pharmacy. Our mission is to provide safe, fast, and reliable digital access to prescription medications. By bridging the gap between technology and healthcare, we ensure that every patient receives the right medicine through proper licensed verification and strict digital procedures.</p>
+      </div>
+    </div>
+
+    <!-- 3 PHARMACISTS ROW -->
+    <div class="team-section">
+      <h2 class="team-title">Our Licensed Pharmacists</h2>
+      <div class="team-grid">
+        
+        <!-- Pharmacist 1 -->
+        <div class="team-card">
+          <img src="picsmed/41.png" alt="Pharmacist 1" onerror="this.onerror=null;this.src='https://placehold.co/200x200?text=Pharmacist+1';" />
+          <h4>taena</h4>
+          <p>Lead Pharmacist</p>
+        </div>
+
+        <!-- Pharmacist 2 -->
+        <div class="team-card">
+          <img src="picsmed/42.png" alt="Pharmacist 2" onerror="this.onerror=null;this.src='https://placehold.co/200x200?text=Pharmacist+2';" />
+          <h4>[Name 2]</h4>
+          <p>Clinical Pharmacist</p>
+        </div>
+
+        <!-- Pharmacist 3 -->
+        <div class="team-card">
+          <img src="picsmed/43.png" alt="Pharmacist 3" onerror="this.onerror=null;this.src='https://placehold.co/200x200?text=Pharmacist+3';" />
+          <h4>[Name 3]</h4>
+          <p>Dispensing Pharmacist</p>
+        </div>
+
+      </div>
+    </div>
+  `;
 }
 
 function filterCategory(cat, btn) {
